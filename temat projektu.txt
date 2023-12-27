@@ -1,0 +1,1 @@
+Algorytm analogiczny do lasu losowego z użyciem zbiorów reguł zamiast drzew decyzyjnych
