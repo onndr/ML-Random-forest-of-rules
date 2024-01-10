@@ -86,12 +86,10 @@ class ComplexRule:
         return sum(self.does_cover(example) for example in examples)
 
     def specialize(self, negative_seed, positive_seed):
-        # Initialize the specialized rules
+        #TODO check this method
         specialized_rules = []
 
-        # Iterate over the selectors
         for selector in self.selectors.values():
-            # If the selector covers the negative seed, specialize the rule by removing the negative seed from the selector
             if selector.does_cover(negative_seed[selector.attribute_name]):
                 specialized_rule = ComplexRule(self.selectors, self.predicted_class)
                 specialized_rule.remove_from_selector(selector.attribute_name, negative_seed[selector.attribute_name])
@@ -114,6 +112,7 @@ class RuleSet:
         return self.rules[-1].predicted_class
 
     def train(self, X, y, attribute_subset, attributes_values, T=10):
+        pass
         #@TODO: implement, current implementation is not finished
 
         # # Separate the training data into positive and negative examples
@@ -170,21 +169,14 @@ class RandomForest:
         xy = list(zip(X, y))
 
         for _ in range(B):
-            # Select a random subset of the zipped list
             xy_subset = random.sample(xy, M)
-
-            # Unzip the subset back into X and y
             X_subset, y_subset = zip(*xy_subset)
 
-            # Select a random subset of the attributes
             attribute_subset = random.choices(attributes, k=num_attributes)
             X_subset = X_subset[attribute_subset]
 
-            # Train a new rule set
             ruleset = RuleSet()
             ruleset.train(X_subset, y_subset, attribute_subset, attributes_values)
-
-            # Add the trained rule set to the forest
             self.rulesets.append(ruleset)
 
     def predict(self, example: dict):
