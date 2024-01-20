@@ -1,3 +1,4 @@
+import copy
 import math
 import random
 
@@ -18,13 +19,17 @@ class Selector:
         if '?' in self.current_values:
             self.current_values = self.possible_values.copy()
 
-        self.current_values.discard('?')
         self.current_values.discard(value)
+
+    def have_value(self, value):
+        if value in self.current_values:
+            return True
+        return False
 
     def set_cover_all(self):
         self.current_values.add('?')
 
-    def set_cover_no(self):
+    def set_cover_nothing(self):
         self.current_values = set()
 
     def does_cover(self, value):
@@ -43,19 +48,20 @@ class Selector:
             return True
         return False
 
+
 class ComplexRule:
     def __init__(self, selectors: dict, predicted_class):
         self.selectors = selectors
         self.predicted_class = predicted_class
-        self.n_selectors = len(selectors)
+        self.amount_of_selectors = len(selectors)
 
     def set_cover_all(self):
         for s in self.selectors:
             s.set_cover_all()
 
-    def set_cover_no(self):
+    def set_cover_nothing(self):
         for s in self.selectors:
-            s.set_cover_no()
+            s.set_cover_nothing()
 
     def set_selector(self, selector: Selector):
         self.selectors[selector.attribute_name] = selector
@@ -86,14 +92,18 @@ class ComplexRule:
         return sum(self.does_cover(example) for example in examples)
 
     def specialize(self, negative_seed, positive_seed):
-        #TODO check this method
+        # TODO check this method
         specialized_rules = []
 
-        for selector in self.selectors.values():
-            if selector.does_cover(negative_seed[selector.attribute_name]):
-                specialized_rule = ComplexRule(self.selectors, self.predicted_class)
-                specialized_rule.remove_from_selector(selector.attribute_name, negative_seed[selector.attribute_name])
-                specialized_rules.append(specialized_rule)
+        for selector_name, selector in self.selectors.values():
+            if negative_seed[selector_name] == positive_seed[selector_name]:
+                continue
+            else:
+                if selector.have_value(negative_seed[selector_name]):
+                    specialized_rule = copy.deepcopy(self)
+                    specialized_rule.remove_from_selector(selector.attribute_name,
+                                                          negative_seed[selector.attribute_name])
+                    specialized_rules.append(specialized_rule)
 
         return specialized_rules
 
@@ -101,6 +111,28 @@ class ComplexRule:
 class RuleSet:
     def __init__(self, rules: list = None) -> None:
         self.rules = rules if rules else []
+
+    def coverage(self, rule, positive_examples, negative_examples):
+        return (
+                sum(rule.does_cover(example) for example in positive_examples)
+                - negative_examples
+                + sum(rule.does_cover(example) for example in negative_examples)
+        )
+
+    def accuracy(self, rule, positive_examples, negative_examples, y_class_amount):
+        return (
+                (sum(rule.does_cover(example) for example in positive_examples) + 1)
+                / (sum(rule.does_cover(example) for example in positive_examples + negative_examples) + y_class_amount)
+        )
+
+    def class_dominance(self, rule, positive_examples, negative_examples):
+        true_positives = sum(rule.does_cover(example) for example in positive_examples)
+        return (
+                true_positives *
+                math.log(
+                    true_positives / (true_positives + sum(rule.does_cover(example) for example in negative_examples))
+                )
+        )
 
     def append_rule(self, rule: ComplexRule):
         self.rules.append(rule)
@@ -111,9 +143,80 @@ class RuleSet:
                 return rule.predicted_class
         return self.rules[-1].predicted_class
 
-    def train(self, X, y, attribute_subset, attributes_values, T=10):
+    def train(self, X, y, attributes_names, attributes_values, T=10, m=10, rule_ranking_function=coverage):
+        match rule_ranking_function:
+            case "coverage":
+                rule_ranking_function = self.coverage
+            case "accuracy":
+                y_class_amount = len(set(y))
+                rule_ranking_function = self.accuracy(y_class_amount=y_class_amount)
+            case "class_dominance":
+                rule_ranking_function = self.class_dominance
+            case _:
+                raise ValueError("Unknown rule ranking function")
+
+        all_not_covered_examples = {}
+        for i in enumerate(X):
+            if y[i] not in all_not_covered_examples:
+                all_not_covered_examples[y[i]] = []
+            all_not_covered_examples[y[i]].append((X[i], y[i]))
+        current_best_rule = None
+        current_best_rule_coverage = None
+        while len(self.rules) < T:
+            current_best_rule = None
+            current_best_rule_coverage = 0
+            positive_seed = (all_not_covered_examples[0], all_not_covered_examples[0])
+
+            positive_examples = []
+            negative_examples = []
+            for y_class in all_not_covered_examples.keys():
+                if y_class == positive_seed[1]:
+                    positive_examples = copy.deepcopy(all_not_covered_examples[y_class])
+                else:
+                    negative_examples += copy.deepcopy(all_not_covered_examples[y_class])
+
+            selectors = {}
+            for attributes_name in attributes_names:
+                selectors[attributes_name] = Selector(attributes_name, attributes_values[attributes_name])
+            current_rules = [ComplexRule(selectors, all_not_covered_examples[0])]
+            current_rules[0].set_cover_all()
+
+            current_seed_index = 0
+
+            while negative_examples and current_seed_index < len(negative_examples):
+                negative_seed = negative_examples[0]
+                new_rules = []
+                for rule in current_rules:
+                    if rule.does_cover(negative_seed[0]):
+                        new_rules.append(rule.specialize(negative_seed, positive_seed))
+                    else:
+                        new_rules.append(rule)
+                current_rules = new_rules
+                for i, rule in enumerate(current_rules):
+                    for j, rule2 in enumerate(current_rules[i + 1:]):
+                        which_is_general = rule.is_more_general(rule2) # TODO I DON'T LIKE DELETING FROM LIST WHILE ITERATING OVER IT
+                        if which_is_general is None:
+                            continue
+                        elif which_is_general:
+                            current_rules.remove(rule2)
+                        else:
+                            current_rules.remove(rule)
+                current_seed_index += 1
+                if len(current_rules) > m:
+                    current_rules.sort(
+                        key=lambda c_rule: rule_ranking_function(c_rule, positive_examples, negative_examples),
+                        reverse=True
+                    )
+                    current_rules = current_rules[:m]
+                if rule_ranking_function(current_rules[0], positive_examples, negative_examples) > current_best_rule_coverage:
+                    current_best_rule = current_rules[0]
+                    current_best_rule_coverage = rule_ranking_function(current_rules[0], positive_examples, negative_examples)
+
+            self.rules.append(current_best_rule) # TODO check if this saves correctly in next iteration
+
+
         pass
-        #@TODO: implement, current implementation is not finished
+        # @TODO: implement, current implementation is not finished
 
         # # Separate the training data into positive and negative examples
         # positive_examples = [example for i, example in enumerate(X) if y[i] == 1]
