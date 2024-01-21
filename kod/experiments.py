@@ -95,7 +95,7 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
     dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
 
-exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
+# exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
 
 
 
@@ -134,22 +134,27 @@ def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranki
         "test_size": test_size
     }
 
-    for max_rules in max_rules_per_ruleset_number:
-        for i in range(iters):
-            for k, v in sets.items():
-                X, y, attributes_values, classes = v
+    for k, v in sets.items():
+        X, y, attributes_values, classes = v
+        for max_rules in max_rules_per_ruleset_number:
+            for i in range(iters):
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
                 model.train(X_train, y_train, attributes_values, B, M, max_rules, m, rule_ranking_method)
                 y_pred = [model.predict(x) for x in X_test]
-                print("y_test: ", y_test)
-                print("y_pred: ", y_pred)
                 cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
-                results[k][r.value]["confusion_matrix"].append(cm.tolist())
-                results[k][r.value]["accuracy"].append(acc)
-                results[k][r.value]["precision"].append(prec)
-                results[k][r.value]["f1_score"].append(f1)
+                results[k][max_rules]["confusion_matrix"].append(cm.tolist())
+                results[k][max_rules]["accuracy"].append(acc)
+                results[k][max_rules]["precision"].append(prec)
+                results[k][max_rules]["f1_score"].append(f1)
                 print("DONE. Set: ", k, " Max rules per ruleset: ", max_rules, " Iteration: ", i)
-    dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
+            # count average, std deviation, best, worst for each measure
+            results[k][max_rules]["statistics"] = count_statistics(
+                results[k][max_rules]["confusion_matrix"],
+                results[k][max_rules]["accuracy"],
+                results[k][max_rules]["precision"],
+                results[k][max_rules]["f1_score"]
+            )
+    dump_exp_results("[RandomForest]_rule_ranking_methods_1_to_20.json", results)
 
 
 exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
