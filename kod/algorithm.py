@@ -3,6 +3,7 @@ import math
 import random
 import enum
 from typing import List, Dict
+from functools import partial
 
 import pandas
 
@@ -49,9 +50,9 @@ class Selector:
     def is_more_general(self, other):
         if self.current_values == other.current_values:
             return GeneralizationStatus.EQUAL
-        if other.current_values.issubset(self.current_values):
+        if other.current_values.issubset(self.current_values) or '?' in self.current_values:
             return GeneralizationStatus.MORE_GENERAL
-        if self.current_values.issubset(other.current_values):
+        if self.current_values.issubset(other.current_values) or '?' in other.current_values:
             return GeneralizationStatus.LESS_GENERAL
         return GeneralizationStatus.INCOMPARABLE
 
@@ -170,7 +171,7 @@ class RuleSet:
                 rule_ranking_function = self.coverage
             case "accuracy":
                 y_class_amount = len(set(y))
-                rule_ranking_function = self.accuracy(y_class_amount=y_class_amount)
+                rule_ranking_function = partial(self.accuracy, y_class_amount=y_class_amount)
             case "class_dominance":
                 rule_ranking_function = self.class_dominance
             case _:
@@ -232,7 +233,6 @@ class RuleSet:
                                 new_rules.remove(rule2)
                                 continue
                 current_rules = new_rules.copy()
-                current_seed_index += 1
                 if len(current_rules) > m:
                     current_rules.sort(
                         key=lambda c_rule: rule_ranking_function(c_rule, positive_examples, negative_examples),
@@ -429,5 +429,5 @@ if __name__ == "__main__":
         "wind": ["normal", "high"]
     }
     ruleSet = RuleSet()
-    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "coverage")
+    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "accuracy")
     pass
