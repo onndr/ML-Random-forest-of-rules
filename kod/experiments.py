@@ -1,7 +1,8 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from algorithm import Selector, ComplexRule, RuleSet, RandomForest
-from tools import get_mushrooms_data, get_titanic_data, get_students_data, quality_measures, dump_exp_results
+from tools import get_mushrooms_data, get_titanic_data, get_students_data, quality_measures, dump_exp_results, \
+    count_statistics
 from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
 
 
@@ -63,10 +64,10 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
         "test_size": test_size
     }
 
-    for r in RULE_RANKING_METHODS:
-        for i in range(iters):
-            for k, v in sets.items():
-                X, y, attributes_values, classes = v
+    for k, v in sets.items():
+        X, y, attributes_values, classes = v
+        for r in RULE_RANKING_METHODS:
+            for i in range(iters):
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
                 model.train(X_train, y_train, attributes_values, B, M, T, m, r)
                 y_pred = [model.predict(x) for x in X_test]
@@ -78,6 +79,19 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
                 results[k][r.value]["precision"].append(prec)
                 results[k][r.value]["f1_score"].append(f1)
                 print("DONE. Set: ", k, " Rule ranking method: ", r, " Iteration: ", i)
+            # count average, std deviation, best, worst for each measure
+            results[k][r.value]["statistics"] = count_statistics(
+                results[k][r.value]["confusion_matrix"],
+                results[k][r.value]["accuracy"],
+                results[k][r.value]["precision"],
+                results[k][r.value]["f1_score"]
+            )
+
+    # Należy pracować na zagregowanych wynikach z min. 25 uruchomień.
+    # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
+
+
+
     dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
 
