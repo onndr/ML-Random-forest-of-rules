@@ -89,10 +89,22 @@ class ComplexRule:
         for attr_name, selector in self.selectors:
             status.add(selector.is_more_general(other.selectors[attr_name]))
 
-        if True in status and False in status:
-            return None
+        if GeneralizationStatus.INCOMPARABLE in status:
+            return GeneralizationStatus.INCOMPARABLE
 
-        return status.pop()
+        if GeneralizationStatus.MORE_GENERAL in status and GeneralizationStatus.LESS_GENERAL in status:
+            return GeneralizationStatus.INCOMPARABLE
+
+        if GeneralizationStatus.MORE_GENERAL in status:
+            return GeneralizationStatus.MORE_GENERAL
+
+        if GeneralizationStatus.LESS_GENERAL in status:
+            return GeneralizationStatus.LESS_GENERAL
+
+        if GeneralizationStatus.EQUAL in status:
+            return GeneralizationStatus.EQUAL
+
+        return GeneralizationStatus.INCOMPARABLE
 
     def coverage(self, examples):
         return sum(self.does_cover(example) for example in examples)
