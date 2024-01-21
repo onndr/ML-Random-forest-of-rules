@@ -78,17 +78,16 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
                 results[k][r.value]["f1_score"].append(f1)
                 print("DONE. Set: ", k, " Rule ranking method: ", r, " Iteration: ", i)
             # count average, std deviation, best, worst for each measure
-            results[k][r.value]["statistics"] = count_statistics(
+            stats = count_statistics(
                 results[k][r.value]["confusion_matrix"],
                 results[k][r.value]["accuracy"],
                 results[k][r.value]["precision"],
                 results[k][r.value]["f1_score"]
             )
+            results[k][r.value]["statistics"] = stats
 
     # Należy pracować na zagregowanych wynikach z min. 25 uruchomień.
     # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
-
-
 
     dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
