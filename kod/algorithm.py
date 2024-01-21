@@ -214,6 +214,8 @@ class RuleSet:
 
             self.rules.append(current_best_rule) # TODO check if this saves correctly in next iteration
 
+        # TODO DO RETURN
+
 
         pass
         # @TODO: implement, current implementation is not finished
