@@ -1,4 +1,6 @@
 import json
+
+import numpy as np
 import pandas as pd
 from constants import *
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, f1_score
@@ -73,6 +75,41 @@ def quality_measures(y_true, y_pred, classes):
     #         f1[c] = f1_score(y_true, y_pred, pos_label=c)
 
     return cm, acc, prec, f1
+
+
+def count_statistics(confusion_matrix_values: list, accuracy_values: list,
+                     precision_values: list, f1_score_values: list):
+
+    arr = np.array(confusion_matrix_values)
+
+    res = {
+        "confusion_matrix": {
+            "avg": list(np.mean(arr, axis=0)),
+            "std": list(np.std(arr, axis=0)),
+            "max": list(np.max(arr, axis=0)),
+            "min": list(np.min(arr, axis=0))
+        },
+        "accuracy": {
+            "avg": np.mean(accuracy_values),
+            "std": np.std(accuracy_values),
+            "max": max(accuracy_values),
+            "min": min(accuracy_values)
+        },
+        "precision": {
+            "avg": np.mean(precision_values),
+            "std": np.std(precision_values),
+            "max": max(precision_values),
+            "min": min(precision_values)
+        },
+        "f1_score": {
+            "avg": np.mean(f1_score_values),
+            "std": np.std(f1_score_values),
+            "max": max(f1_score_values),
+            "min": min(f1_score_values)
+        }
+    }
+
+    return res
 
 
 if __name__ == "__main__":
