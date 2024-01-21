@@ -166,7 +166,7 @@ class RuleSet:
         return self.rules[-1].predicted_class
 
     def train(self, X: list[dict], y: list, attributes_names: list, attributes_values: dict, T: int = 10, m: int = 10,
-              rule_ranking_function=RuleRankingMethodsEnum.COVERAGE.value):
+              rule_ranking_function=RuleRankingMethodsEnum.COVERAGE):
         match rule_ranking_function:
             case RuleRankingMethodsEnum.COVERAGE:
                 rule_ranking_function = self.coverage
@@ -256,7 +256,6 @@ class RuleSet:
             random.shuffle(all_not_covered_examples)
 
 
-
 class RandomForest:
     def __init__(self):
         self.rulesets = []
@@ -266,7 +265,7 @@ class RandomForest:
         max_attributes = len(attributes_values)
         num_attributes = math.floor(math.sqrt(max_attributes))
 
-        attributes = attributes_values.keys()
+        attributes = list(attributes_values.keys())
 
         xy = list(zip(X, y))
 
@@ -275,7 +274,7 @@ class RandomForest:
             X_subset, y_subset = zip(*xy_subset)
 
             attribute_names_subset = random.choices(attributes, k=num_attributes)
-            X_subset = X_subset[attribute_names_subset]
+            X_subset = [{k: d[k] for k in attribute_names_subset} for d in X_subset]
 
             ruleset = RuleSet()
             ruleset.train(X_subset, y_subset, attribute_names_subset, attributes_values, T, m, rule_ranking_function)
@@ -389,4 +388,4 @@ if __name__ == "__main__":
         "wind": ["normal", "high"]
     }
     ruleSet = RuleSet()
-    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "coverage")
+    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, RuleRankingMethodsEnum.COVERAGE)

@@ -41,3 +41,5 @@ class DefaultHyperparamsValuesEnum(enum.Enum):
     RULE_RANKING_METHOD = RuleRankingMethodsEnum.COVERAGE
     # liczba iteracji eksperymentu
     ITERATIONS = 1
+    # rozmiar zbioru testowego (w procentach)
+    TEST_SIZE = 0.2

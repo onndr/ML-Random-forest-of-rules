@@ -1,4 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 from algorithm import Selector, ComplexRule, RuleSet, RandomForest
 from tools import get_mushrooms_data, get_titanic_data, get_students_data, quality_measures, dump_exp_results
 from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
@@ -26,39 +27,50 @@ from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyper
 
 
 # domyślne zbiory danych
-X, y, attributes_values = get_mushrooms_data()
+sets = {
+    "mushrooms": get_mushrooms_data()
+    # "titanic": get_titanic_data(),
+    # "students": get_students_data()
+}
 
 # domyślne wartości hiperparametrów
-iters = DefaultHyperparamsValuesEnum.ITERATIONS.value   # liczba iteracji eksperymentu
-B = DefaultHyperparamsValuesEnum.B.value                # maksymalna liczba zbiorów reguł
-M = DefaultHyperparamsValuesEnum.M.value                # wielkość podzbioru trenującego dla każdego zbioru reguł
-T = DefaultHyperparamsValuesEnum.T.value                # liczba drzew w lesie
-m = DefaultHyperparamsValuesEnum.m.value                # liczba atrybutów w podzbiorze dla każdego drzewa
+iters = DefaultHyperparamsValuesEnum.ITERATIONS.value       # liczba iteracji eksperymentu
+B = DefaultHyperparamsValuesEnum.B.value                    # maksymalna liczba zbiorów reguł
+M = DefaultHyperparamsValuesEnum.M.value                    # wielkość podzbioru trenującego dla każdego zbioru reguł
+T = DefaultHyperparamsValuesEnum.T.value                    # liczba drzew w lesie
+m = DefaultHyperparamsValuesEnum.m.value                    # liczba atrybutów w podzbiorze dla każdego drzewa
+test_size = DefaultHyperparamsValuesEnum.TEST_SIZE.value    # rozmiar zbioru testowego (w procentach)
 
 
-def exp_var_rule_ranking(iters, X, y, attributes_values, B, M, T, m):
+def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
     model = RandomForest()
     results = {
-        r: {
-            "confusion_matrix": [],
-            "accuracy": [],
-            "precision": [],
-            "f1_score": []
-        } for r in RULE_RANKING_METHODS
+        k: {
+            r: {
+                "confusion_matrix": [],
+                "accuracy": [],
+                "precision": [],
+                "f1_score": []
+            } for r in RULE_RANKING_METHODS
+        } for k in sets.keys()
     }
     for r in RULE_RANKING_METHODS:
         for i in range(iters):
-            model.train(X, y, attributes_values, B, M, T, m, r)
-            y_pred = model.predict(X)
-            cm, acc, prec, f1 = quality_measures(y, y_pred)
-            results[r]["confusion_matrix"].append(cm.tolist())
-            results[r]["accuracy"].append(acc)
-            results[r]["precision"].append(prec)
-            results[r]["f1_score"].append(f1)
-    dump_exp_results("rule_ranking_methods.json", results)
+            for k, v in sets.items():
+                X, y, attributes_values = v
+                # Split the data into training and test sets
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+                model.train(X_train, y_train, attributes_values, B, M, T, m, r)
+                y_pred = model.predict(X_test)
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred)
+                results[k][r]["confusion_matrix"].append(cm.tolist())
+                results[k][r]["accuracy"].append(acc)
+                results[k][r]["precision"].append(prec)
+                results[k][r]["f1_score"].append(f1)
+    dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
 
-exp_var_rule_ranking(iters, X, y, attributes_values, B, M, T, m)
+exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
 
 
 def exp_var_seed_choice():
