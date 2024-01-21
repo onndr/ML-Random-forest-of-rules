@@ -246,56 +246,15 @@ class RuleSet:
                                                                        negative_examples)
                 current_seed_index += 1
 
-            self.rules.append(current_best_rule)  # TODO check if this saves correctly in next iteration
+            self.rules.append(current_rules[0])
             all_not_covered_examples = negative_examples
             for i, example in enumerate(positive_examples):
-                if not current_best_rule.does_cover(example[0]):
+                if not current_rules[0].does_cover(example[0]):
                     all_not_covered_examples.append(example)
             all_not_covered_examples = positive_examples + negative_examples
             random.shuffle(all_not_covered_examples)
 
         pass
-        # @TODO: implement, current implementation is not finished
-
-        # # Separate the training data into positive and negative examples
-        # positive_examples = [example for i, example in enumerate(X) if y[i] == 1]
-        # negative_examples = [example for i, example in enumerate(X) if y[i] == 0]
-
-        # # Initialize the rule counter
-        # t = 0
-
-        # # Repeat until there are no more positive examples or the rule limit is reached
-        # while positive_examples and t < T:
-        #     # Select the first positive example as the seed
-        #     seed = positive_examples[0]
-
-        #     # Initialize the rule set with a universal rule
-        #     G = [ComplexRule(attribute_subset)]
-
-        #     # Repeat until there are no more negative examples covered by the rule set
-        #     while any(rule.does_cover(example) for rule in G for example in negative_examples):
-        #         # Select the first negative example covered by the rule set as the negative seed
-        #         negative_seed = next(example for example in negative_examples if any(rule.does_cover(example) for rule in G))
-
-        #         # Specialize each rule in the rule set using the negative seed and the positive seed
-        #         G = [specialized_rule for rule in G for specialized_rule in rule.specialize(negative_seed, seed)]
-
-        #         # If the rule set is too large, keep only the best rules according to some criterion (e.g., coverage)
-        #         if len(G) > 2:
-        #             G.sort(key=lambda rule: rule.coverage(positive_examples), reverse=True)
-        #             G = G[:2]
-
-        #     # Select the best rule from the rule set according to some criterion (e.g., coverage)
-        #     best_rule = max(G, key=lambda rule: rule.coverage(positive_examples))
-
-        #     # Add the best rule to the list of rules
-        #     self.rules.append(best_rule)
-
-        #     # Remove the positive examples covered by the best rule
-        #     positive_examples = [example for example in positive_examples if not best_rule.does_cover(example)]
-
-        #     # Increment the rule counter
-        #     t += 1
 
 
 class RandomForest:
@@ -429,5 +388,5 @@ if __name__ == "__main__":
         "wind": ["normal", "high"]
     }
     ruleSet = RuleSet()
-    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "accuracy")
+    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "coverage")
     pass
