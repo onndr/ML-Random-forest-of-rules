@@ -206,6 +206,7 @@ class RuleSet:
 
             while negative_examples and current_seed_index < len(negative_examples):
                 negative_seed = negative_examples[current_seed_index]
+                current_seed_index += 1
                 new_rules = []
                 for rule in current_rules:
                     if rule.does_cover(negative_seed[0]):
@@ -240,19 +241,35 @@ class RuleSet:
                         reverse=True
                     )
                     current_rules = current_rules[:m]
+
+                if not current_rules:
+                    break
+
                 if rule_ranking_function(current_rules[0], positive_examples,
                                          negative_examples) > current_best_rule_coverage:
                     current_best_rule = current_rules[0]
                     current_best_rule_coverage = rule_ranking_function(current_rules[0], positive_examples,
                                                                        negative_examples)
-                current_seed_index += 1
+
+            if not current_rules:
+                if not current_best_rule:
+                    negative_examples.pop(current_seed_index-1)
+                    all_not_covered_examples = negative_examples + positive_examples
+                    continue
+
+                self.rules.append(current_best_rule)
+                all_not_covered_examples = negative_examples
+                for i, example in enumerate(positive_examples):
+                    if not current_best_rule.does_cover(example[0]):
+                        all_not_covered_examples.append(example)
+                random.shuffle(all_not_covered_examples)
+                continue
 
             self.rules.append(current_rules[0])
             all_not_covered_examples = negative_examples
             for i, example in enumerate(positive_examples):
                 if not current_rules[0].does_cover(example[0]):
                     all_not_covered_examples.append(example)
-            all_not_covered_examples = positive_examples + negative_examples
             random.shuffle(all_not_covered_examples)
 
 
