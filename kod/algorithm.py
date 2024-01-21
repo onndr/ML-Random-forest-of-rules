@@ -167,24 +167,33 @@ class RuleSet:
         # returns class dominance with coverage of rule (according to lecture)
         # true positives * log(true positives / true positives + false positives)
         true_positives = sum(rule.does_cover(example[0]) for example in positive_examples)
+        if true_positives == 0:
+            return 0
         return (
                 true_positives *
                 math.log(
-                    true_positives / (true_positives + sum(rule.does_cover(example[0]) for example in negative_examples))
+                    true_positives / (
+                                true_positives + sum(rule.does_cover(example[0]) for example in negative_examples))
                 )
         )
 
     def append_rule(self, rule: ComplexRule):
+        # appends rule to ruleset
         self.rules.append(rule)
 
     def predict(self, example: dict):
+        # predicts class of example
         for rule in self.rules:
             if rule.does_cover(example):
                 return rule.predicted_class
         return self.rules[-1].predicted_class
 
-    def train(self, X: list[dict], y: list, attributes_names: list, attributes_values: dict, T: int = 10, m: int = 10,
+    def train(self, X: list[dict], y: list, attributes_names: list, attributes_values: dict, max_rules: int = 10,
+              max_rules_before_reducing: int = 10,
               rule_ranking_function=RuleRankingMethodsEnum.COVERAGE):
+        # trains ruleset
+
+        # choose rule ranking function
         match rule_ranking_function:
             case RuleRankingMethodsEnum.COVERAGE:
                 rule_ranking_function = self.coverage
@@ -196,24 +205,30 @@ class RuleSet:
             case _:
                 raise ValueError("Unknown rule ranking function")
 
+        # create list of all not covered examples
         all_not_covered_examples = []
         for i, row in enumerate(X):
             all_not_covered_examples.append((row, y[i]))
+
         current_best_rule = None
         current_best_rule_coverage = None
-        while len(self.rules) < T and all_not_covered_examples:
+
+        # main loop of rules creation
+        while len(self.rules) < max_rules and all_not_covered_examples:
             current_best_rule = None
             current_best_rule_coverage = 0
+            # choose positive seed (first is not covered example, next ones are random (due to shuffling in the end))
             positive_seed = (all_not_covered_examples[0])
 
             positive_examples = []
             negative_examples = []
+            # split all not covered examples into positive and negative examples
             for row in all_not_covered_examples:
                 if row[1] == positive_seed[1]:
                     positive_examples.append(row)
                 else:
                     negative_examples.append(row)
-
+            # create full selector for each attribute
             selectors = {}
             for attributes_name in attributes_names:
                 selectors[attributes_name] = Selector(attributes_name, attributes_values[attributes_name])
@@ -222,9 +237,13 @@ class RuleSet:
 
             current_seed_index = 0
 
+            # loop of creating one rule
             while negative_examples and current_seed_index < len(negative_examples):
+                # assign negative seed (going through all negative examples)
                 negative_seed = negative_examples[current_seed_index]
                 current_seed_index += 1
+
+                # specialize current rules by negative seed
                 new_rules = []
                 for rule in current_rules:
                     if rule.does_cover(negative_seed[0]):
@@ -232,14 +251,14 @@ class RuleSet:
                     else:
                         new_rules.append(rule)
                 current_rules = new_rules.copy()
+                # remove less general rules
                 for i, rule in enumerate(current_rules):
                     if rule not in new_rules:
                         continue
                     for j, rule2 in enumerate(current_rules[i + 1:]):
                         if rule2 not in new_rules:
                             continue
-                        which_is_general = rule.is_more_general(rule2)  # I DON'T LIKE DELETING FROM LIST WHILE
-                        # ITERATING OVER IT SO I DON'T DO IT
+                        which_is_general = rule.is_more_general(rule2)
                         match which_is_general:
                             case GeneralizationStatus.INCOMPARABLE:
                                 pass
@@ -253,36 +272,45 @@ class RuleSet:
                                 new_rules.remove(rule2)
                                 continue
                 current_rules = new_rules.copy()
-                if len(current_rules) > m:
+                # remove rules if there are more than the parameter provided
+                if len(current_rules) > max_rules_before_reducing:
                     current_rules.sort(
                         key=lambda c_rule: rule_ranking_function(c_rule, positive_examples, negative_examples),
                         reverse=True
                     )
-                    current_rules = current_rules[:m]
+                    current_rules = current_rules[:max_rules_before_reducing]
 
+                # if there are no rules there were conflict examples, remove this example from set (dealt with later)
                 if not current_rules:
                     break
 
+                # set current best rule to the best rule from current rules (if it is better than current best rule)
                 if rule_ranking_function(current_rules[0], positive_examples,
                                          negative_examples) > current_best_rule_coverage:
                     current_best_rule = current_rules[0]
                     current_best_rule_coverage = rule_ranking_function(current_rules[0], positive_examples,
                                                                        negative_examples)
-
+            # if there are no rules there were conflict examples, remove this example from set (dealt now)
             if not current_rules:
+                # if it was early then go again with the same positive seed
                 if not current_best_rule:
-                    negative_examples.pop(current_seed_index-1)
+                    negative_examples.pop(current_seed_index - 1)
                     all_not_covered_examples = negative_examples + positive_examples
                     continue
 
+                # if it was not early then add current best rule to ruleset and go again with different positive seed
+
+                # save best rule
                 self.rules.append(current_best_rule)
+
+                # delete covered positive_examples from all not covered examples
                 all_not_covered_examples = negative_examples
                 for i, example in enumerate(positive_examples):
                     if not current_best_rule.does_cover(example[0]):
                         all_not_covered_examples.append(example)
                 random.shuffle(all_not_covered_examples)
                 continue
-
+            # if every went right then add current best rule to ruleset
             self.rules.append(current_rules[0])
             all_not_covered_examples = negative_examples
             for i, example in enumerate(positive_examples):
@@ -295,7 +323,10 @@ class RandomForest:
     def __init__(self):
         self.rulesets = []
 
-    def train(self, X, y, attributes_values, B, M, T, m, rule_ranking_function):
+    def train(self, X, y, attributes_values, amount_of_rulesets, training_set_size, max_rules_in_ruleset,
+              max_rules_before_reducing, rule_ranking_function):
+        # trains random forest
+
         self.rulesets = []
         max_attributes = len(attributes_values)
         num_attributes = math.floor(math.sqrt(max_attributes))
@@ -304,18 +335,22 @@ class RandomForest:
 
         xy = list(zip(X, y))
 
-        for _ in range(B):
-            xy_subset = random.sample(xy, M)
+        for _ in range(amount_of_rulesets):
+            # create training subset
+            xy_subset = random.sample(xy, training_set_size)
             X_subset, y_subset = zip(*xy_subset)
 
+            # choose random attributes
             attribute_names_subset = random.choices(attributes, k=num_attributes)
             X_subset = [{k: d[k] for k in attribute_names_subset} for d in X_subset]
 
             ruleset = RuleSet()
-            ruleset.train(X_subset, y_subset, attribute_names_subset, attributes_values, T, m, rule_ranking_function)
+            ruleset.train(X_subset, y_subset, attribute_names_subset, attributes_values, max_rules_in_ruleset,
+                          max_rules_before_reducing, rule_ranking_function)
             self.rulesets.append(ruleset)
 
     def predict(self, example: dict):
+        # predicts class of example
         predictions = {}
         for ruleset in self.rulesets:
             pred = ruleset.predict(example)
@@ -327,6 +362,7 @@ class RandomForest:
 
 
 if __name__ == "__main__":
+    # example of ruleset training
     X = [
         {
             "outlook": "sunny",
@@ -424,3 +460,4 @@ if __name__ == "__main__":
     }
     ruleSet = RuleSet()
     ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, RuleRankingMethodsEnum.COVERAGE)
+    pass
