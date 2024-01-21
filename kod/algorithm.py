@@ -23,32 +23,33 @@ class Selector:
         self.current_values = set()
 
     def add_value(self, value):
+        # adds new value to selector
         if value in self.possible_values:
             self.current_values.add(value)
 
     def remove_value(self, value):
+        # removes value from selector
         if '?' in self.current_values:
             self.current_values = set(self.possible_values.copy())
 
         self.current_values.discard(value)
 
-    def have_value(self, value):
-        if value in self.current_values or '?' in self.current_values:
-            return True
-        return False
-
     def set_cover_all(self):
+        # sets selector to cover all possible values
         self.current_values = set('?')
 
     def set_cover_nothing(self):
+        # sets selector to cover nothing
         self.current_values = set()
 
     def does_cover(self, value):
+        # checks if selector covers value
         if '?' in self.current_values or value in self.current_values:
             return True
         return False
 
     def is_more_general(self, other):
+        # checks if selector is more general than other
         if self.current_values == other.current_values:
             return GeneralizationStatus.EQUAL
         if other.current_values.issubset(self.current_values) or '?' in self.current_values:
@@ -65,29 +66,36 @@ class ComplexRule:
         self.amount_of_selectors = len(selectors)
 
     def set_cover_all(self):
+        # sets all selectors to cover all possible values
         for s in self.selectors.values():
             s.set_cover_all()
 
     def set_cover_nothing(self):
+        # sets all selectors to cover nothing
         for s in self.selectors:
             s.set_cover_nothing()
 
     def set_selector(self, selector: Selector):
+        # sets selector to given selector
         self.selectors[selector.attribute_name] = selector
 
     def add_to_selector(self, attribute_name, value):
+        # adds value to selector
         self.selectors[attribute_name].add_value(value)
 
     def remove_from_selector(self, attribute_name, value):
+        # removes value from selector
         self.selectors[attribute_name].remove_value(value)
 
     def does_cover(self, example: dict):
+        # checks if rule covers example
         for key, value in example.items():
             if key in self.selectors.keys() and not self.selectors[key].does_cover(value):
                 return False
         return True
 
     def is_more_general(self, other):
+        # checks if rule is more general than other
         status = set()
         for attr_name, selector in self.selectors.items():
             status.add(selector.is_more_general(other.selectors[attr_name]))
@@ -110,20 +118,24 @@ class ComplexRule:
         return GeneralizationStatus.INCOMPARABLE
 
     def coverage(self, examples):
+        # returns number of examples covered by rule
         return sum(self.does_cover(example) for example in examples)
 
     def specialize(self, negative_seed, positive_seed):
-        # TODO check this method
+        # returns list of rules specialized by negative seed
         specialized_rules = []
 
         for selector_name, selector in self.selectors.items():
+            # if negative seed and positive seed have the same value for given selector, skip it
             if negative_seed[selector_name] == positive_seed[selector_name]:
                 continue
             else:
-                if selector.have_value(negative_seed[selector_name]):
+                # if negative seed is covered by selector, specialize rule by removing negative seed value from selector
+                if selector.does_cover(negative_seed[selector_name]):
                     specialized_rule = copy.deepcopy(self)
                     specialized_rule.remove_from_selector(selector.attribute_name,
                                                           negative_seed[selector.attribute_name])
+                    # add specialized rule to list of specialized rules
                     specialized_rules.append(specialized_rule)
 
         return specialized_rules
@@ -134,13 +146,17 @@ class RuleSet:
         self.rules = rules if rules else []
 
     def coverage(self, rule, positive_examples, negative_examples):
+        # returns number of examples covered by rule (according to lecture)
+        # true positives - false positives + true negatives
         return (
                 sum(rule.does_cover(example[0]) for example in positive_examples)
-                - len(negative_examples)
-                + sum(rule.does_cover(example[0]) for example in negative_examples)
+                + len(negative_examples)
+                - (2 * sum(rule.does_cover(example[0]) for example in negative_examples))
         )
 
     def accuracy(self, rule, positive_examples, negative_examples, y_class_amount):
+        # returns accuracy of rule (according to lecture)
+        # true positives + 1 / true positives + false positives + amount of classes
         return (
                 (sum(rule.does_cover(example[0]) for example in positive_examples) + 1)
                 / (sum(rule.does_cover(example[0]) for example in positive_examples + negative_examples)
@@ -148,6 +164,8 @@ class RuleSet:
         )
 
     def class_dominance(self, rule, positive_examples, negative_examples):
+        # returns class dominance with coverage of rule (according to lecture)
+        # true positives * log(true positives / true positives + false positives)
         true_positives = sum(rule.does_cover(example[0]) for example in positive_examples)
         return (
                 true_positives *
