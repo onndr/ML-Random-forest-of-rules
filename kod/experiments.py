@@ -28,9 +28,9 @@ from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyper
 
 # domyślne zbiory danych
 sets = {
-    "mushrooms": get_mushrooms_data()
-    # "titanic": get_titanic_data(),
-    # "students": get_students_data()
+    "mushrooms_set": get_mushrooms_data(),
+    "titanic_set": get_titanic_data(),
+    "students_set": get_students_data()
 }
 
 # domyślne wartości hiperparametrów
@@ -46,7 +46,7 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
     model = RandomForest()
     results = {
         k: {
-            r: {
+            r.value: {
                 "confusion_matrix": [],
                 "accuracy": [],
                 "precision": [],
@@ -54,27 +54,35 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
             } for r in RULE_RANKING_METHODS
         } for k in sets.keys()
     }
+    results["hyperparams"] = {
+        "iters": iters,
+        "B": B,
+        "M": M,
+        "T": T,
+        "m": m,
+        "test_size": test_size
+    }
+
     for r in RULE_RANKING_METHODS:
         for i in range(iters):
             for k, v in sets.items():
-                X, y, attributes_values = v
-                # Split the data into training and test sets
+                X, y, attributes_values, classes = v
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
                 model.train(X_train, y_train, attributes_values, B, M, T, m, r)
-                y_pred = model.predict(X_test)
-                cm, acc, prec, f1 = quality_measures(y_test, y_pred)
-                results[k][r]["confusion_matrix"].append(cm.tolist())
-                results[k][r]["accuracy"].append(acc)
-                results[k][r]["precision"].append(prec)
-                results[k][r]["f1_score"].append(f1)
+                y_pred = [model.predict(x) for x in X_test]
+                print("y_test: ", y_test)
+                print("y_pred: ", y_pred)
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
+                results[k][r.value]["confusion_matrix"].append(cm.tolist())
+                results[k][r.value]["accuracy"].append(acc)
+                results[k][r.value]["precision"].append(prec)
+                results[k][r.value]["f1_score"].append(f1)
+                print("DONE. Set: ", k, " Rule ranking method: ", r, " Iteration: ", i)
     dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
 
 exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
 
-
-def exp_var_seed_choice():
-    pass
 
 
 def exp_hyperparam_training_set_size_whole_algorithm():

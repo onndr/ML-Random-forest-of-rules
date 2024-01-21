@@ -30,7 +30,7 @@ RULE_RANKING_METHODS = [
 
 class DefaultHyperparamsValuesEnum(enum.Enum):
     # maksymalna liczba zbiorów reguł
-    B = 1000
+    B = 100
     # wielkość podzbioru trenującego dla każdego zbioru reguł
     M = 100
     # maksymalna ilość kompleksów, które pozostają po specjalizacji (najlepiej ocenione kompleksy)
