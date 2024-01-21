@@ -157,8 +157,7 @@ def exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, rule_ranking_metho
 
 
 
-max_rules_per_ruleset_number = [1, 2, 4, 10, 15, 20]
-
+max_rules_per_ruleset_number = [1, 2, 10, 15]
 def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranking_method, test_size):
     model = RandomForest()
     results = {
@@ -176,7 +175,7 @@ def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranki
         "B": B,
         "M": M,
         "m": m,
-        "Rule ranking method": rule_ranking_method,
+        "Rule ranking method": rule_ranking_method.value,
         "test_size": test_size
     }
 
