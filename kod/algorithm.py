@@ -1,8 +1,16 @@
 import copy
 import math
 import random
+import enum
 
 import pandas
+
+
+class GeneralizationStatus(enum.Enum):
+    MORE_GENERAL = 1
+    LESS_GENERAL = 2
+    EQUAL = 3
+    INCOMPARABLE = 4
 
 
 class Selector:
@@ -38,15 +46,13 @@ class Selector:
         return False
 
     def is_more_general(self, other):
-        if '?' in self.current_values:
-            return True
-        if '?' in other.current_values:
-            return False
         if self.current_values == other.current_values:
-            return None
+            return GeneralizationStatus.EQUAL
+        if other.current_values.issubset(self.current_values):
+            return GeneralizationStatus.MORE_GENERAL
         if self.current_values.issubset(other.current_values):
-            return True
-        return False
+            return GeneralizationStatus.LESS_GENERAL
+        return GeneralizationStatus.INCOMPARABLE
 
 
 class ComplexRule:
