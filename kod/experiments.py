@@ -38,8 +38,9 @@ iters = DefaultHyperparamsValuesEnum.ITERATIONS.value       # liczba iteracji ek
 B = DefaultHyperparamsValuesEnum.B.value                    # maksymalna liczba zbiorów reguł
 M = DefaultHyperparamsValuesEnum.M.value                    # wielkość podzbioru trenującego dla każdego zbioru reguł
 T = DefaultHyperparamsValuesEnum.T.value                    # liczba drzew w lesie
-m = DefaultHyperparamsValuesEnum.m.value                    # liczba atrybutów w podzbiorze dla każdego drzewa
+m = DefaultHyperparamsValuesEnum.m.value                    # maksymalna ilość reguł w jednym zbiorze reguł
 test_size = DefaultHyperparamsValuesEnum.TEST_SIZE.value    # rozmiar zbioru testowego (w procentach)
+def_ran_method = DefaultHyperparamsValuesEnum.RULE_RANKING_METHOD.value # metoda oceniania reguł w trakcie specjalizacji
 
 
 def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
@@ -89,8 +90,35 @@ def exp_hyperparam_max_rule_sets_number():
     pass
 
 
+max_rules_per_ruleset_number = [1, 2, 4, 10, 15, 20]
+
 def exp_hyperparam_max_rules_per_ruleset_number():
-    pass
+    model = RandomForest()
+
+    results = {
+        k: {
+            max_rules: {
+                "confusion_matrix": [],
+                "accuracy": [],
+                "precision": [],
+                "f1_score": []
+            } for max_rules in max_rules_per_ruleset_number
+        } for k in sets.keys()
+    }
+    for max_rules in max_rules_per_ruleset_number:
+        for i in range(iters):
+            for k, v in sets.items():
+                X, y, attributes_values = v
+                # Split the data into training and test sets
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+                model.train(X_train, y_train, attributes_values, B, M, max_rules, m, def_ran_method)
+                y_pred = model.predict(X_test)
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred)
+                results[k][max_rules]["confusion_matrix"].append(cm.tolist())
+                results[k][max_rules]["accuracy"].append(acc)
+                results[k][max_rules]["precision"].append(prec)
+                results[k][max_rules]["f1_score"].append(f1)
+    dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
 
 def compare_models():
