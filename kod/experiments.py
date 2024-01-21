@@ -37,8 +37,9 @@ sets = {
 iters = DefaultHyperparamsValuesEnum.ITERATIONS.value       # liczba iteracji eksperymentu
 B = DefaultHyperparamsValuesEnum.B.value                    # maksymalna liczba zbiorów reguł
 M = DefaultHyperparamsValuesEnum.M.value                    # wielkość podzbioru trenującego dla każdego zbioru reguł
-T = DefaultHyperparamsValuesEnum.T.value                    # liczba drzew w lesie
-m = DefaultHyperparamsValuesEnum.m.value                    # maksymalna ilość reguł w jednym zbiorze reguł
+T = DefaultHyperparamsValuesEnum.T.value                    # liczba reguł w zbiorze reguł
+m = DefaultHyperparamsValuesEnum.m.value                    # maksymalna ilość reguł w jednym zbiorze reguł w czasie
+                                                            # specjalizacji
 test_size = DefaultHyperparamsValuesEnum.TEST_SIZE.value    # rozmiar zbioru testowego (w procentach)
 def_ran_method = DefaultHyperparamsValuesEnum.RULE_RANKING_METHOD.value # metoda oceniania reguł w trakcie specjalizacji
 
@@ -100,9 +101,8 @@ def exp_hyperparam_max_rule_sets_number():
 
 max_rules_per_ruleset_number = [1, 2, 4, 10, 15, 20]
 
-def exp_hyperparam_max_rules_per_ruleset_number():
+def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranking_method, test_size):
     model = RandomForest()
-
     results = {
         k: {
             max_rules: {
@@ -113,20 +113,34 @@ def exp_hyperparam_max_rules_per_ruleset_number():
             } for max_rules in max_rules_per_ruleset_number
         } for k in sets.keys()
     }
+    results["hyperparams"] = {
+        "iters": iters,
+        "B": B,
+        "M": M,
+        "m": m,
+        "Rule ranking method": rule_ranking_method,
+        "test_size": test_size
+    }
+
     for max_rules in max_rules_per_ruleset_number:
         for i in range(iters):
             for k, v in sets.items():
-                X, y, attributes_values = v
-                # Split the data into training and test sets
+                X, y, attributes_values, classes = v
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-                model.train(X_train, y_train, attributes_values, B, M, max_rules, m, def_ran_method)
-                y_pred = model.predict(X_test)
-                cm, acc, prec, f1 = quality_measures(y_test, y_pred)
-                results[k][max_rules]["confusion_matrix"].append(cm.tolist())
-                results[k][max_rules]["accuracy"].append(acc)
-                results[k][max_rules]["precision"].append(prec)
-                results[k][max_rules]["f1_score"].append(f1)
+                model.train(X_train, y_train, attributes_values, B, M, max_rules, m, rule_ranking_method)
+                y_pred = [model.predict(x) for x in X_test]
+                print("y_test: ", y_test)
+                print("y_pred: ", y_pred)
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
+                results[k][r.value]["confusion_matrix"].append(cm.tolist())
+                results[k][r.value]["accuracy"].append(acc)
+                results[k][r.value]["precision"].append(prec)
+                results[k][r.value]["f1_score"].append(f1)
+                print("DONE. Set: ", k, " Max rules per ruleset: ", max_rules, " Iteration: ", i)
     dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
+
+
+exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
 
 
 def compare_models():
