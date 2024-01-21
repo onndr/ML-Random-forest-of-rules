@@ -71,8 +71,6 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
                 model.train(X_train, y_train, attributes_values, B, M, T, m, r)
                 y_pred = [model.predict(x) for x in X_test]
-                print("y_test: ", y_test)
-                print("y_pred: ", y_pred)
                 cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
                 results[k][r.value]["confusion_matrix"].append(cm.tolist())
                 results[k][r.value]["accuracy"].append(acc)

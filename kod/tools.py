@@ -84,10 +84,10 @@ def count_statistics(confusion_matrix_values: list, accuracy_values: list,
 
     res = {
         "confusion_matrix": {
-            "avg": np.mean(arr, axis=0),
-            "std": np.std(arr, axis=0),
-            "max": np.max(arr, axis=0),
-            "min": np.min(arr, axis=0)
+            "avg": list(np.mean(arr, axis=0)),
+            "std": list(np.std(arr, axis=0)),
+            "max": list(np.max(arr, axis=0)),
+            "min": list(np.min(arr, axis=0))
         },
         "accuracy": {
             "avg": np.mean(accuracy_values),
