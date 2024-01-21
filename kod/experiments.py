@@ -105,9 +105,56 @@ def exp_hyperparam_training_set_size_whole_algorithm():
 def exp_hyperparam_training_set_size_per_rule_set():
     pass
 
+max_rulesets_for_test = [30, 70, 110, 150]
+def exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, rule_ranking_method, test_size):
+    model = RandomForest()
+    results = {
+        k: {
+            max_ruleset: {
+                "confusion_matrix": [],
+                "accuracy": [],
+                "precision": [],
+                "f1_score": []
+            } for max_ruleset in max_rulesets_for_test
+        } for k in sets.keys()
+    }
+    results["hyperparams"] = {
+        "iters": iters,
+        "B": B,
+        "M": M,
+        "T": T,
+        "m": m,
+        "test_size": test_size
+    }
 
-def exp_hyperparam_max_rule_sets_number():
-    pass
+    for k, v in sets.items():
+        X, y, attributes_values, classes = v
+        for max_ruleset in max_rulesets_for_test:
+            for i in range(iters):
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+                model.train(X_train, y_train, attributes_values, max_ruleset, M, T, m, rule_ranking_method)
+                y_pred = [model.predict(x) for x in X_test]
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
+                results[k][max_ruleset]["confusion_matrix"].append(cm.tolist())
+                results[k][max_ruleset]["accuracy"].append(acc)
+                results[k][max_ruleset]["precision"].append(prec)
+                results[k][max_ruleset]["f1_score"].append(f1)
+                print("DONE. Set: ", k, "Max rulesets", max_ruleset, " Iteration: ", i)
+            # count average, std deviation, best, worst for each measure
+            stats = count_statistics(
+                results[k][max_ruleset]["confusion_matrix"],
+                results[k][max_ruleset]["accuracy"],
+                results[k][max_ruleset]["precision"],
+                results[k][max_ruleset]["f1_score"]
+            )
+            results[k][max_ruleset]["statistics"] = stats
+
+    # Należy pracować na zagregowanych wynikach z min. 25 uruchomień.
+    # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
+
+    dump_exp_results("[RandomForest]max_rulesets_30_to_150.json", results)
+
+
 
 
 max_rules_per_ruleset_number = [1, 2, 4, 10, 15, 20]
@@ -153,7 +200,7 @@ def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranki
                 results[k][max_rules]["precision"],
                 results[k][max_rules]["f1_score"]
             )
-    dump_exp_results("[RandomForest]_rule_ranking_methods_1_to_20.json", results)
+    dump_exp_results("[RandomForest]_max_rules_per_ruleset_1_to_20.json", results)
 
 
 exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
