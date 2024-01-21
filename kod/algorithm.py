@@ -252,7 +252,6 @@ class RuleSet:
             for i, example in enumerate(positive_examples):
                 if not current_rules[0].does_cover(example[0]):
                     all_not_covered_examples.append(example)
-            all_not_covered_examples = positive_examples + negative_examples
             random.shuffle(all_not_covered_examples)
 
 
@@ -389,4 +388,5 @@ if __name__ == "__main__":
         "wind": ["normal", "high"]
     }
     ruleSet = RuleSet()
-    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "coverage")
+    ruleSet.train(X, y, attributes_names, attribute_values, 10, 3, RuleRankingMethodsEnum.COVERAGE)
+    pass
