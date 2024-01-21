@@ -13,12 +13,13 @@ def read_csv_data(csv_data_path, column_names=None, separator=','):
 def get_data(data_path, column_names=None, separator=',', target_column_name='class', columns_to_drop=None):
     data = read_csv_data(data_path, column_names, separator)
     y = data[target_column_name].to_list()
+    classes = list(set(y))
     X = data.drop([target_column_name], axis=1)
     if columns_to_drop is not None:
         X = X.drop(columns_to_drop, axis=1)
     columns_values = {col: X[col].unique().tolist() for col in X.columns}
     X = X.to_dict('records')
-    return X, y, columns_values
+    return X, y, columns_values, classes
 
 
 def get_mushrooms_data():
@@ -57,11 +58,20 @@ def get_exp_results(filename: str):
         return json.load(f)
 
 
-def quality_measures(y_true, y_pred):
+def quality_measures(y_true, y_pred, classes):
     cm = confusion_matrix(y_true, y_pred)
     acc = accuracy_score(y_true, y_pred)
-    prec = precision_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
+    prec = {}
+    f1 = {}
+
+    if len(classes) >= 2:
+        prec = precision_score(y_true, y_pred, average='weighted')
+        f1 = f1_score(y_true, y_pred, average='weighted')
+    # else:
+    #     for c in classes:
+    #         prec[c] = precision_score(y_true, y_pred, pos_label=c)
+    #         f1[c] = f1_score(y_true, y_pred, pos_label=c)
+
     return cm, acc, prec, f1
 
 
