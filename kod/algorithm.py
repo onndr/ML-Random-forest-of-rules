@@ -4,6 +4,7 @@ import random
 import enum
 from typing import List, Dict
 from functools import partial
+from constants import RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
 
 import pandas
 
@@ -32,7 +33,7 @@ class Selector:
         self.current_values.discard(value)
 
     def have_value(self, value):
-        if (value in self.current_values or '?' in self.current_values):
+        if value in self.current_values or '?' in self.current_values:
             return True
         return False
 
@@ -164,15 +165,15 @@ class RuleSet:
                 return rule.predicted_class
         return self.rules[-1].predicted_class
 
-    def train(self, X: List[Dict], y: List, attributes_names: List, attributes_values: Dict, T: int = 10, m: int = 10,
-              rule_ranking_function="coverage"):
+    def train(self, X: list[dict], y: list, attributes_names: list, attributes_values: dict, T: int = 10, m: int = 10,
+              rule_ranking_function=RuleRankingMethodsEnum.COVERAGE.value):
         match rule_ranking_function:
-            case "coverage":
+            case RuleRankingMethodsEnum.COVERAGE:
                 rule_ranking_function = self.coverage
-            case "accuracy":
+            case RuleRankingMethodsEnum.ACCURACY:
                 y_class_amount = len(set(y))
                 rule_ranking_function = partial(self.accuracy, y_class_amount=y_class_amount)
-            case "class_dominance":
+            case RuleRankingMethodsEnum.CLASS_DOMINANCE:
                 rule_ranking_function = self.class_dominance
             case _:
                 raise ValueError("Unknown rule ranking function")
@@ -182,7 +183,7 @@ class RuleSet:
             all_not_covered_examples.append((row, y[i]))
         current_best_rule = None
         current_best_rule_coverage = None
-        while len(self.rules) < T:
+        while len(self.rules) < T and all_not_covered_examples:
             current_best_rule = None
             current_best_rule_coverage = 0
             positive_seed = (all_not_covered_examples[0])
@@ -254,14 +255,14 @@ class RuleSet:
             all_not_covered_examples = positive_examples + negative_examples
             random.shuffle(all_not_covered_examples)
 
-        pass
 
 
 class RandomForest:
     def __init__(self):
         self.rulesets = []
 
-    def train(self, X: '''pandas.Dataframe''', y: pandas.DataFrame, attributes_values, B, M):
+    def train(self, X, y, attributes_values, B, M, T, m, rule_ranking_function):
+        self.rulesets = []
         max_attributes = len(attributes_values)
         num_attributes = math.floor(math.sqrt(max_attributes))
 
@@ -273,11 +274,11 @@ class RandomForest:
             xy_subset = random.sample(xy, M)
             X_subset, y_subset = zip(*xy_subset)
 
-            attribute_subset = random.choices(attributes, k=num_attributes)
-            X_subset = X_subset[attribute_subset]
+            attribute_names_subset = random.choices(attributes, k=num_attributes)
+            X_subset = X_subset[attribute_names_subset]
 
             ruleset = RuleSet()
-            ruleset.train(X_subset, y_subset, attribute_subset, attributes_values)
+            ruleset.train(X_subset, y_subset, attribute_names_subset, attributes_values, T, m, rule_ranking_function)
             self.rulesets.append(ruleset)
 
     def predict(self, example: dict):
@@ -389,4 +390,3 @@ if __name__ == "__main__":
     }
     ruleSet = RuleSet()
     ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "coverage")
-    pass

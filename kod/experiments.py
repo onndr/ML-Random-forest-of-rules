@@ -1,7 +1,7 @@
 from sklearn.ensemble import RandomForestClassifier
 from algorithm import Selector, ComplexRule, RuleSet, RandomForest
 from tools import get_mushrooms_data, get_titanic_data, get_students_data, quality_measures, dump_exp_results
-from constants import RULE_RANKING_METHODS
+from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
 
 
 # Eksperymenty
@@ -27,12 +27,16 @@ from constants import RULE_RANKING_METHODS
 
 # domyślne zbiory danych
 X, y, attributes_values = get_mushrooms_data()
+
 # domyślne wartości hiperparametrów
-B = 30      # maksymalna liczba zbiorów reguł
-M = 100     # wielkość podzbioru trenującego dla każdego zbioru reguł
+iters = DefaultHyperparamsValuesEnum.ITERATIONS.value   # liczba iteracji eksperymentu
+B = DefaultHyperparamsValuesEnum.B.value                # maksymalna liczba zbiorów reguł
+M = DefaultHyperparamsValuesEnum.M.value                # wielkość podzbioru trenującego dla każdego zbioru reguł
+T = DefaultHyperparamsValuesEnum.T.value                # liczba drzew w lesie
+m = DefaultHyperparamsValuesEnum.m.value                # liczba atrybutów w podzbiorze dla każdego drzewa
 
 
-def exp_var_rule_ranking():
+def exp_var_rule_ranking(iters, X, y, attributes_values, B, M, T, m):
     model = RandomForest()
     results = {
         r: {
@@ -43,14 +47,18 @@ def exp_var_rule_ranking():
         } for r in RULE_RANKING_METHODS
     }
     for r in RULE_RANKING_METHODS:
-        model.train(X, y, attributes_values, B, M)
-        y_pred = model.predict(X)
-        cm, acc, prec, f1 = quality_measures(y, y_pred)
-        results[r]["confusion_matrix"].append(cm.tolist())
-        results[r]["accuracy"].append(acc)
-        results[r]["precision"].append(prec)
-        results[r]["f1_score"].append(f1)
-        dump_exp_results("rule_ranking_method_" + r + ".json", results)
+        for i in range(iters):
+            model.train(X, y, attributes_values, B, M, T, m, r)
+            y_pred = model.predict(X)
+            cm, acc, prec, f1 = quality_measures(y, y_pred)
+            results[r]["confusion_matrix"].append(cm.tolist())
+            results[r]["accuracy"].append(acc)
+            results[r]["precision"].append(prec)
+            results[r]["f1_score"].append(f1)
+    dump_exp_results("rule_ranking_methods.json", results)
+
+
+exp_var_rule_ranking(iters, X, y, attributes_values, B, M, T, m)
 
 
 def exp_var_seed_choice():
