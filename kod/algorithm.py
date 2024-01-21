@@ -2,6 +2,7 @@ import copy
 import math
 import random
 import enum
+from typing import List, Dict
 
 import pandas
 
@@ -25,17 +26,17 @@ class Selector:
 
     def remove_value(self, value):
         if '?' in self.current_values:
-            self.current_values = self.possible_values.copy()
+            self.current_values = set(self.possible_values.copy())
 
         self.current_values.discard(value)
 
     def have_value(self, value):
-        if value in self.current_values:
+        if (value in self.current_values or '?' in self.current_values):
             return True
         return False
 
     def set_cover_all(self):
-        self.current_values.add('?')
+        self.current_values = set('?')
 
     def set_cover_nothing(self):
         self.current_values = set()
@@ -62,7 +63,7 @@ class ComplexRule:
         self.amount_of_selectors = len(selectors)
 
     def set_cover_all(self):
-        for s in self.selectors:
+        for s in self.selectors.values():
             s.set_cover_all()
 
     def set_cover_nothing(self):
@@ -76,7 +77,7 @@ class ComplexRule:
         self.selectors[attribute_name].add_value(value)
 
     def remove_from_selector(self, attribute_name, value):
-        self.selectors[attribute_name].remove(value)
+        self.selectors[attribute_name].remove_value(value)
 
     def does_cover(self, example: dict):
         for key, value in example.items():
@@ -86,7 +87,7 @@ class ComplexRule:
 
     def is_more_general(self, other):
         status = set()
-        for attr_name, selector in self.selectors:
+        for attr_name, selector in self.selectors.items():
             status.add(selector.is_more_general(other.selectors[attr_name]))
 
         if GeneralizationStatus.INCOMPARABLE in status:
@@ -113,7 +114,7 @@ class ComplexRule:
         # TODO check this method
         specialized_rules = []
 
-        for selector_name, selector in self.selectors.values():
+        for selector_name, selector in self.selectors.items():
             if negative_seed[selector_name] == positive_seed[selector_name]:
                 continue
             else:
@@ -132,23 +133,24 @@ class RuleSet:
 
     def coverage(self, rule, positive_examples, negative_examples):
         return (
-                sum(rule.does_cover(example) for example in positive_examples)
-                - negative_examples
-                + sum(rule.does_cover(example) for example in negative_examples)
+                sum(rule.does_cover(example[0]) for example in positive_examples)
+                - len(negative_examples)
+                + sum(rule.does_cover(example[0]) for example in negative_examples)
         )
 
     def accuracy(self, rule, positive_examples, negative_examples, y_class_amount):
         return (
-                (sum(rule.does_cover(example) for example in positive_examples) + 1)
-                / (sum(rule.does_cover(example) for example in positive_examples + negative_examples) + y_class_amount)
+                (sum(rule.does_cover(example[0]) for example in positive_examples) + 1)
+                / (sum(rule.does_cover(example[0]) for example in positive_examples + negative_examples)
+                   + y_class_amount)
         )
 
     def class_dominance(self, rule, positive_examples, negative_examples):
-        true_positives = sum(rule.does_cover(example) for example in positive_examples)
+        true_positives = sum(rule.does_cover(example[0]) for example in positive_examples)
         return (
                 true_positives *
                 math.log(
-                    true_positives / (true_positives + sum(rule.does_cover(example) for example in negative_examples))
+                    true_positives / (true_positives + sum(rule.does_cover(example[0]) for example in negative_examples))
                 )
         )
 
@@ -161,7 +163,8 @@ class RuleSet:
                 return rule.predicted_class
         return self.rules[-1].predicted_class
 
-    def train(self, X, y, attributes_names, attributes_values, T=10, m=10, rule_ranking_function=coverage):
+    def train(self, X: List[Dict], y: List, attributes_names: List, attributes_values: Dict, T: int = 10, m: int = 10,
+              rule_ranking_function="coverage"):
         match rule_ranking_function:
             case "coverage":
                 rule_ranking_function = self.coverage
@@ -173,52 +176,62 @@ class RuleSet:
             case _:
                 raise ValueError("Unknown rule ranking function")
 
-        all_not_covered_examples = {}
-        for i in enumerate(X):
-            if y[i] not in all_not_covered_examples:
-                all_not_covered_examples[y[i]] = []
-            all_not_covered_examples[y[i]].append((X[i], y[i]))
+        all_not_covered_examples = []
+        for i, row in enumerate(X):
+            all_not_covered_examples.append((row, y[i]))
         current_best_rule = None
         current_best_rule_coverage = None
         while len(self.rules) < T:
             current_best_rule = None
             current_best_rule_coverage = 0
-            positive_seed = (all_not_covered_examples[0], all_not_covered_examples[0])
+            positive_seed = (all_not_covered_examples[0])
 
             positive_examples = []
             negative_examples = []
-            for y_class in all_not_covered_examples.keys():
-                if y_class == positive_seed[1]:
-                    positive_examples = copy.deepcopy(all_not_covered_examples[y_class])
+            for row in all_not_covered_examples:
+                if row[1] == positive_seed[1]:
+                    positive_examples.append(row)
                 else:
-                    negative_examples += copy.deepcopy(all_not_covered_examples[y_class])
+                    negative_examples.append(row)
 
             selectors = {}
             for attributes_name in attributes_names:
                 selectors[attributes_name] = Selector(attributes_name, attributes_values[attributes_name])
-            current_rules = [ComplexRule(selectors, all_not_covered_examples[0])]
+            current_rules = [ComplexRule(selectors, all_not_covered_examples[0][1])]
             current_rules[0].set_cover_all()
 
             current_seed_index = 0
 
             while negative_examples and current_seed_index < len(negative_examples):
-                negative_seed = negative_examples[0]
+                negative_seed = negative_examples[current_seed_index]
                 new_rules = []
                 for rule in current_rules:
                     if rule.does_cover(negative_seed[0]):
-                        new_rules.append(rule.specialize(negative_seed, positive_seed))
+                        new_rules += rule.specialize(negative_seed[0], positive_seed[0])
                     else:
                         new_rules.append(rule)
-                current_rules = new_rules
+                current_rules = new_rules.copy()
                 for i, rule in enumerate(current_rules):
+                    if rule not in new_rules:
+                        continue
                     for j, rule2 in enumerate(current_rules[i + 1:]):
-                        which_is_general = rule.is_more_general(rule2) # TODO I DON'T LIKE DELETING FROM LIST WHILE ITERATING OVER IT
-                        if which_is_general is None:
+                        if rule2 not in new_rules:
                             continue
-                        elif which_is_general:
-                            current_rules.remove(rule2)
-                        else:
-                            current_rules.remove(rule)
+                        which_is_general = rule.is_more_general(rule2)  # I DON'T LIKE DELETING FROM LIST WHILE
+                        # ITERATING OVER IT SO I DON'T DO IT
+                        match which_is_general:
+                            case GeneralizationStatus.INCOMPARABLE:
+                                pass
+                            case GeneralizationStatus.MORE_GENERAL:
+                                new_rules.remove(rule2)
+                                continue
+                            case GeneralizationStatus.LESS_GENERAL:
+                                new_rules.remove(rule)
+                                break
+                            case GeneralizationStatus.EQUAL:
+                                new_rules.remove(rule2)
+                                continue
+                current_rules = new_rules.copy()
                 current_seed_index += 1
                 if len(current_rules) > m:
                     current_rules.sort(
@@ -226,14 +239,20 @@ class RuleSet:
                         reverse=True
                     )
                     current_rules = current_rules[:m]
-                if rule_ranking_function(current_rules[0], positive_examples, negative_examples) > current_best_rule_coverage:
+                if rule_ranking_function(current_rules[0], positive_examples,
+                                         negative_examples) > current_best_rule_coverage:
                     current_best_rule = current_rules[0]
-                    current_best_rule_coverage = rule_ranking_function(current_rules[0], positive_examples, negative_examples)
+                    current_best_rule_coverage = rule_ranking_function(current_rules[0], positive_examples,
+                                                                       negative_examples)
+                current_seed_index += 1
 
-            self.rules.append(current_best_rule) # TODO check if this saves correctly in next iteration
-
-        # TODO DO RETURN
-
+            self.rules.append(current_best_rule)  # TODO check if this saves correctly in next iteration
+            all_not_covered_examples = negative_examples
+            for i, example in enumerate(positive_examples):
+                if not current_best_rule.does_cover(example[0]):
+                    all_not_covered_examples.append(example)
+            all_not_covered_examples = positive_examples + negative_examples
+            random.shuffle(all_not_covered_examples)
 
         pass
         # @TODO: implement, current implementation is not finished
@@ -283,7 +302,7 @@ class RandomForest:
     def __init__(self):
         self.rulesets = []
 
-    def train(self, X: pandas.Dataframe, y: pandas.DataFrame, attributes_values, B, M):
+    def train(self, X: '''pandas.Dataframe''', y: pandas.DataFrame, attributes_values, B, M):
         max_attributes = len(attributes_values)
         num_attributes = math.floor(math.sqrt(max_attributes))
 
@@ -311,3 +330,104 @@ class RandomForest:
             else:
                 predictions[pred] += 1
         return max(predictions, key=predictions.get)
+
+
+if __name__ == "__main__":
+    X = [
+        {
+            "outlook": "sunny",
+            "temperature": "hot",
+            "humidity": "high",
+            "wind": "normal"
+        },
+        {
+            "outlook": "sunny",
+            "temperature": "hot",
+            "humidity": "high",
+            "wind": "high"
+        },
+        {
+            "outlook": "overcast",
+            "temperature": "hot",
+            "humidity": "high",
+            "wind": "normal"
+        },
+        {
+            "outlook": "rainy",
+            "temperature": "mild",
+            "humidity": "high",
+            "wind": "normal"
+        },
+        {
+            "outlook": "rainy",
+            "temperature": "cold",
+            "humidity": "normal",
+            "wind": "normal"
+        },
+        {
+            "outlook": "rainy",
+            "temperature": "cold",
+            "humidity": "normal",
+            "wind": "high"
+        },
+        {
+            "outlook": "overcast",
+            "temperature": "cold",
+            "humidity": "normal",
+            "wind": "high"
+        },
+        {
+            "outlook": "sunny",
+            "temperature": "mild",
+            "humidity": "high",
+            "wind": "normal"
+        },
+        {
+            "outlook": "sunny",
+            "temperature": "cold",
+            "humidity": "normal",
+            "wind": "normal"
+        },
+        {
+            "outlook": "rainy",
+            "temperature": "mild",
+            "humidity": "normal",
+            "wind": "normal"
+        },
+        {
+            "outlook": "sunny",
+            "temperature": "mild",
+            "humidity": "normal",
+            "wind": "high"
+        },
+        {
+            "outlook": "overcast",
+            "temperature": "mild",
+            "humidity": "high",
+            "wind": "high"
+        },
+        {
+            "outlook": "overcast",
+            "temperature": "hot",
+            "humidity": "normal",
+            "wind": "normal"
+        },
+        {
+            "outlook": "rainy",
+            "temperature": "mild",
+            "humidity": "high",
+            "wind": "high"
+        },
+
+    ]
+    y = ["no", "no", "yes", "yes", "yes", "no", "yes", "no", "yes", "yes", "yes", "yes", "yes", "no"]
+    attributes_names = ["outlook", "temperature", "humidity", "wind"]
+    attribute_values = {
+        "outlook": ["sunny", "overcast", "rainy"],
+        "temperature": ["hot", "mild", "cold"],
+        "humidity": ["high", "normal"],
+        "wind": ["normal", "high"]
+    }
+    ruleSet = RuleSet()
+    ruleSet.train(X, y, attributes_names, attribute_values, 2, 2, "coverage")
+    pass
