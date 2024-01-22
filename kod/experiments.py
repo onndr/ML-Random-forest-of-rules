@@ -57,6 +57,7 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
             } for r in RULE_RANKING_METHODS
         } for k in sets.keys()
     }
+
     results["hyperparams"] = {
         "iters": iters,
         "B": B,
@@ -96,14 +97,115 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
 
 # exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
 
+training_test_sizes = [0.5, 0.8, 0.9, 0.95]
+def exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, rule_ranking_method):
+    model = RandomForest()
+    results = {
+        k: {
+            str(train_size): {
+                "confusion_matrix": [],
+                "accuracy": [],
+                "precision": [],
+                "f1_score": []
+            } for train_size in training_test_sizes
+        } for k in sets.keys()
+    }
+
+    results["hyperparams"] = {
+        "iters": iters,
+        "B": B,
+        "M": M,
+        "T": T,
+        "m": m,
+        "Rule ranking method": rule_ranking_method.value,
+        "train_sizes": training_test_sizes
+    }
+
+    for k, v in sets.items():
+        X, y, attributes_values, classes = v
+        for train_size in training_test_sizes:
+            for i in range(iters):
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size)
+                model.train(X_train, y_train, attributes_values, B, M, T, m, rule_ranking_method)
+                y_pred = [model.predict(x) for x in X_test]
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
+                results[k][str(train_size)]["confusion_matrix"].append(cm.tolist())
+                results[k][str(train_size)]["accuracy"].append(acc)
+                results[k][str(train_size)]["precision"].append(prec)
+                results[k][str(train_size)]["f1_score"].append(f1)
+                print("DONE. Set: ", k, " Training set size: ", train_size, " Iteration: ", i)
+            # count average, std deviation, best, worst for each measure
+            stats = count_statistics(
+                results[k][str(train_size)]["confusion_matrix"],
+                results[k][str(train_size)]["accuracy"],
+                results[k][str(train_size)]["precision"],
+                results[k][str(train_size)]["f1_score"]
+            )
+            results[k][str(train_size)]["statistics"] = stats
+
+    # Należy pracować na zagregowanych wynikach z min. 25 uruchomień.
+    # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
+
+    dump_exp_results("[RandomForest]_training_set_size.json", results)
 
 
-def exp_hyperparam_training_set_size_whole_algorithm():
-    pass
+# exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, def_ran_method)
 
 
-def exp_hyperparam_training_set_size_per_rule_set():
-    pass
+training_test_sizes_per_ruleset = [20, 50, 100, 200, 500]
+def exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, rule_ranking_method, test_size):
+    model = RandomForest()
+    results = {
+        k: {
+            str(train_size): {
+                "confusion_matrix": [],
+                "accuracy": [],
+                "precision": [],
+                "f1_score": []
+            } for train_size in training_test_sizes_per_ruleset
+        } for k in sets.keys()
+    }
+
+    results["hyperparams"] = {
+        "iters": iters,
+        "B": B,
+        "M": training_test_sizes_per_ruleset,
+        "T": T,
+        "m": m,
+        "Rule ranking method": rule_ranking_method.value,
+        "train_sizes_per_ruleset": training_test_sizes_per_ruleset,
+        "test_size": test_size
+    }
+
+    for k, v in sets.items():
+        X, y, attributes_values, classes = v
+        for train_size_per_ruleset in training_test_sizes_per_ruleset:
+            for i in range(iters):
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+                model.train(X_train, y_train, attributes_values, B, train_size_per_ruleset, T, m, rule_ranking_method)
+                y_pred = [model.predict(x) for x in X_test]
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
+                results[k][str(train_size_per_ruleset)]["confusion_matrix"].append(cm.tolist())
+                results[k][str(train_size_per_ruleset)]["accuracy"].append(acc)
+                results[k][str(train_size_per_ruleset)]["precision"].append(prec)
+                results[k][str(train_size_per_ruleset)]["f1_score"].append(f1)
+                print("DONE. Set: ", k, " Training set size per ruleset: ", train_size_per_ruleset, " Iteration: ", i)
+            # count average, std deviation, best, worst for each measure
+            stats = count_statistics(
+                results[k][str(train_size_per_ruleset)]["confusion_matrix"],
+                results[k][str(train_size_per_ruleset)]["accuracy"],
+                results[k][str(train_size_per_ruleset)]["precision"],
+                results[k][str(train_size_per_ruleset)]["f1_score"]
+            )
+            results[k][str(train_size_per_ruleset)]["statistics"] = stats
+
+    # Należy pracować na zagregowanych wynikach z min. 25 uruchomień.
+    # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
+
+    dump_exp_results("[RandomForest]_training_set_size_per_ruleset.json", results)
+
+
+exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, def_ran_method, test_size)
 
 max_rulesets_for_test = [30, 70, 110, 150]
 def exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, rule_ranking_method, test_size):
@@ -202,7 +304,7 @@ def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranki
     dump_exp_results("[RandomForest]_max_rules_per_ruleset_1_to_20.json", results)
 
 
-exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
+# exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
 
 
 def compare_models():
