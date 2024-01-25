@@ -96,7 +96,6 @@ def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
     dump_exp_results("[RandomForest]_rule_ranking_methods.json", results)
 
 
-# exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
 
 training_test_sizes = [0.5, 0.8, 0.9, 0.95]
 
@@ -150,9 +149,6 @@ def exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, ru
     # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
 
     dump_exp_results("[RandomForest]_training_set_size.json", results)
-
-
-# exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, def_ran_method)
 
 
 training_test_sizes_per_ruleset = [20, 50, 100, 200, 500]
@@ -210,8 +206,6 @@ def exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, rule_ran
     dump_exp_results("[RandomForest]_training_set_size_per_ruleset.json", results)
 
 
-# exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, def_ran_method, test_size)
-
 max_rulesets_for_test = [30, 70, 110, 150]
 
 
@@ -265,7 +259,7 @@ def exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, rule_ranking_metho
 
 
 max_rules_per_ruleset_number = [1, 2, 10, 15]
-
+# max_rules_per_ruleset_number = [1]
 
 def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranking_method, test_size):
     model = RandomForest()
@@ -311,7 +305,6 @@ def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranki
     dump_exp_results("[RandomForest]_max_rules_per_ruleset_1_to_20.json", results)
 
 
-# exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
 
 def single_ruleset_exp(iters, T, m, rule_ranking_method, test_size):
     max_rulesets_for_test = [0]
@@ -402,15 +395,25 @@ def random_forest_exp(iters, n_estimators, max_depth, test_size):
             )
             results[k]["statistics"] = stats
 
-    dump_exp_results("[RandomForest]_random_forest.json", results)
+    dump_exp_results("[DefaultRandomForest]_random_forest.json", results)
     return results
 
 
 def compare_models():
     # i guess we first find the best params for our model and then compare
-    custom_forest = RandomForest()
-    classic_forest_results = random_forest_exp(1, 100, 30, 0.1)
-    # single_ruleset_results = single_ruleset_exp(25, 30, 5, RuleRankingMethodsEnum.COVERAGE, 0.9)
+    # exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
+
+    # exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, def_ran_method)
+
+    # exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, def_ran_method, test_size)
+
+    # exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, def_ran_method, test_size)
+
+    # exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
+
+    classic_forest_results = random_forest_exp(25, 100, 30, 0.2)
+
+    single_ruleset_results = single_ruleset_exp(25, 30, 5, RuleRankingMethodsEnum.COVERAGE, 0.9)
 
     pass
 
