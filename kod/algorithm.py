@@ -6,7 +6,7 @@ from typing import List, Dict
 from functools import partial
 from constants import RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
 
-import pandas
+# import pandas
 
 
 class GeneralizationStatus(enum.Enum):

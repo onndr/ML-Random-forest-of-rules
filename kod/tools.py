@@ -14,6 +14,7 @@ def read_csv_data(csv_data_path, column_names=None, separator=','):
 
 def get_data(data_path, column_names=None, separator=',', target_column_name='class', columns_to_drop=None):
     data = read_csv_data(data_path, column_names, separator)
+
     y = data[target_column_name].to_list()
     classes = list(set(y))
     X = data.drop([target_column_name], axis=1)
