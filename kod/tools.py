@@ -34,7 +34,9 @@ def get_mushrooms_data():
 def get_students_data():
     target_column_name = 'Target'
     separator = ';'
-    columns_to_drop = ['Admission grade', 'Unemployment rate', 'Inflation rate', 'GDP', 'Curricular units 2nd sem (grade)', 'Curricular units 1st sem (grade)', 'Previous qualification (grade)']
+    columns_to_drop = ['Admission grade', 'Unemployment rate', 'Inflation rate', 'GDP',
+                       'Curricular units 2nd sem (grade)', 'Curricular units 1st sem (grade)',
+                       'Previous qualification (grade)']
 
     res = get_data(STUDENTS_DATA_PATH, separator=separator,
                    target_column_name=target_column_name,
@@ -79,7 +81,6 @@ def quality_measures(y_true, y_pred, classes):
 
 def count_statistics(confusion_matrix_values: list, accuracy_values: list,
                      precision_values: list, f1_score_values: list):
-
     arr = np.array(confusion_matrix_values)
 
     res = {
@@ -110,6 +111,30 @@ def count_statistics(confusion_matrix_values: list, accuracy_values: list,
     }
 
     return res
+
+
+def read_stats(filepath: str):
+    ret = {}
+    ret["experiment_name:"] = filepath.split("/")[-1].split(".")[0]
+    with open(filepath, "r") as f:
+        results = json.load(f)
+        for key, value in results.items():
+            for k, v in value.items():
+                if isinstance(v, dict):
+                    ret[k + "_stats"] = v["statistics"]
+    return ret
+
+
+def print_stats_tables(stats: dict):
+    for key, value in stats.items():
+        if key.endswith("_stats"):
+            print(key)
+            for k, v in value.items():
+                if isinstance(v, dict):
+                    print(k, v)
+            print()
+        else :
+            print(key, value)
 
 
 if __name__ == "__main__":

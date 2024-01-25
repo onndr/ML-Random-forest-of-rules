@@ -1,8 +1,9 @@
+import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from algorithm import Selector, ComplexRule, RuleSet, RandomForest
-from tools import get_mushrooms_data, get_titanic_data, get_students_data, quality_measures, dump_exp_results, \
-    count_statistics
+from tools import get_mushrooms_data, get_titanic_data, get_students_data, print_stats_tables, quality_measures, dump_exp_results, \
+    count_statistics, read_stats
 from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
 
 
@@ -205,7 +206,7 @@ def exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, rule_ran
     dump_exp_results("[RandomForest]_training_set_size_per_ruleset.json", results)
 
 
-exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, def_ran_method, test_size)
+# exp_hyperparam_training_set_size_per_rule_set(iters, sets, B, T, m, def_ran_method, test_size)
 
 max_rulesets_for_test = [30, 70, 110, 150]
 def exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, rule_ranking_method, test_size):
@@ -312,3 +313,15 @@ def compare_models():
     custom_forest = RandomForest()
     classic_forest = RandomForestClassifier()
     single_ruleset = RuleSet()
+    pass
+
+
+def print_out_results():
+    for file in os.listdir("../wyniki_eksperymentów"):
+        if file.endswith(".json"):
+            results = read_stats("../wyniki_eksperymentów/" + file)
+            print_stats_tables(results)
+
+
+if __name__ == "__main__":
+    print_out_results()
