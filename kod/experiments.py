@@ -120,7 +120,7 @@ def exp_hyperparam_max_rule_sets_number(iters, sets, M, T, m, rule_ranking_metho
     }
     results["hyperparams"] = {
         "iters": iters,
-        "B": B,
+        "Rule ranking method": rule_ranking_method.value,
         "M": M,
         "T": T,
         "m": m,
@@ -203,6 +203,7 @@ def exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, rule_ranki
 
 
 exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
+
 
 
 def compare_models():
