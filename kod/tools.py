@@ -121,21 +121,22 @@ def read_stats(filepath: str):
         for key, value in results.items():
             for k, v in value.items():
                 if isinstance(v, dict):
-                    ret[k + "_stats"] = v["statistics"]
+                    for kk, vv in v.items():
+                        if kk == "statistics":
+                            ret[f"{key}_{k}_{kk}"] = vv
     return ret
 
 
 def print_stats_tables(stats: dict):
     for key, value in stats.items():
-        if key.endswith("_stats"):
+        if "statistics" in key:
             print(key)
             for k, v in value.items():
-                if isinstance(v, dict):
-                    print(k, v)
+                print(k, v)
             print()
-        else :
+        else:
             print(key, value)
-
+            print()
 
 if __name__ == "__main__":
     get_mushrooms_data()
