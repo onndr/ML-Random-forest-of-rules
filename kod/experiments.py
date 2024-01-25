@@ -1,9 +1,10 @@
+import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import train_test_split
 from algorithm import Selector, ComplexRule, RuleSet, RandomForest
-from tools import get_mushrooms_data, get_titanic_data, get_students_data, quality_measures, dump_exp_results, \
-    count_statistics
+from tools import get_mushrooms_data, get_titanic_data, get_students_data, print_stats_tables, quality_measures, dump_exp_results, \
+    count_statistics, read_stats
 from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyperparamsValuesEnum
 
 # Eksperymenty
@@ -35,14 +36,14 @@ sets = {
 }
 
 # domyślne wartości hiperparametrów
-iters = DefaultHyperparamsValuesEnum.ITERATIONS.value  # liczba iteracji eksperymentu
-B = DefaultHyperparamsValuesEnum.B.value  # maksymalna liczba zbiorów reguł
-M = DefaultHyperparamsValuesEnum.M.value  # wielkość podzbioru trenującego dla każdego zbioru reguł
-T = DefaultHyperparamsValuesEnum.T.value  # liczba reguł w zbiorze reguł
-m = DefaultHyperparamsValuesEnum.m.value  # maksymalna ilość reguł w jednym zbiorze reguł w czasie
-# specjalizacji
-test_size = DefaultHyperparamsValuesEnum.TEST_SIZE.value  # rozmiar zbioru testowego (w procentach)
-def_ran_method = DefaultHyperparamsValuesEnum.RULE_RANKING_METHOD.value  # metoda oceniania reguł w trakcie specjalizacji
+iters = DefaultHyperparamsValuesEnum.ITERATIONS.value       # liczba iteracji eksperymentu
+B = DefaultHyperparamsValuesEnum.B.value                    # maksymalna liczba zbiorów reguł
+M = DefaultHyperparamsValuesEnum.M.value                    # wielkość podzbioru trenującego dla każdego zbioru reguł
+T = DefaultHyperparamsValuesEnum.T.value                    # liczba reguł w zbiorze reguł
+m = DefaultHyperparamsValuesEnum.m.value                    # maksymalna ilość reguł w jednym zbiorze reguł w czasie
+                                                            # specjalizacji
+test_size = DefaultHyperparamsValuesEnum.TEST_SIZE.value    # rozmiar zbioru testowego (w procentach)
+def_ran_method = DefaultHyperparamsValuesEnum.RULE_RANKING_METHOD.value # metoda oceniania reguł w trakcie specjalizacji
 
 
 def exp_var_rule_ranking(iters, sets, B, M, T, m, test_size):
@@ -410,8 +411,18 @@ def compare_models():
     custom_forest = RandomForest()
     classic_forest_results = random_forest_exp(1, 100, 30, 0.1)
     # single_ruleset_results = single_ruleset_exp(25, 30, 5, RuleRankingMethodsEnum.COVERAGE, 0.9)
+
     pass
 
 
-if __name__ == '__main__':
+def print_out_results():
+    for file in os.listdir("../wyniki_eksperymentów"):
+        if file.endswith(".json"):
+            results = read_stats("../wyniki_eksperymentów/" + file)
+            print_stats_tables(results)
+
+
+if __name__ == "__main__":
     compare_models()
+    print_out_results()
+    pass
