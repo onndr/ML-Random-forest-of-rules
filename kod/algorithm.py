@@ -324,12 +324,22 @@ class RandomForest:
         self.rulesets = []
 
     def train(self, X, y, attributes_values, amount_of_rulesets, training_set_size, max_rules_in_ruleset,
-              max_rules_before_reducing, rule_ranking_function):
+              max_rules_before_reducing, rule_ranking_function, num_of_attributes = 'sqrt'):
         # trains random forest
+
 
         self.rulesets = []
         max_attributes = len(attributes_values)
-        num_attributes = math.floor(math.sqrt(max_attributes))
+        num_of_attributes = num_of_attributes
+        if num_of_attributes == 'sqrt':
+            num_attributes = math.floor(math.sqrt(max_attributes))
+        if num_of_attributes == 'log2':
+            num_attributes = math.floor(math.log2(max_attributes))
+        if num_of_attributes == 'all':
+            num_attributes = max_attributes
+        if num_of_attributes == 'half':
+            num_attributes = math.ceil(max_attributes/2)
+
 
         attributes = list(attributes_values.keys())
 

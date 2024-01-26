@@ -151,6 +151,66 @@ def exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, ru
     dump_exp_results("[RandomForest]_training_set_size.json", results)
 
 
+amount_of_columns_per_ruleset = ['all', 'sqrt', 'log2', 'half']
+def exp_hyperparam_amount_of_columns_per_ruleset(iters, sets, B, M, T, m, rule_ranking_method, test_size):
+    model = RandomForest()
+    results = {
+        k: {
+            str(train_size): {
+                "confusion_matrix": [],
+                "accuracy": [],
+                "precision": [],
+                "f1_score": []
+            } for train_size in amount_of_columns_per_ruleset
+        } for k in sets.keys()
+    }
+
+    results["hyperparams"] = {
+        "iters": iters,
+        "B": B,
+        "M": M,
+        "T": T,
+        "m": m,
+        "Rule ranking method": rule_ranking_method.value,
+        "train_size": 1 - test_size,
+        "amount_of_columns_per_ruleset": amount_of_columns_per_ruleset
+    }
+
+    for k, v in sets.items():
+        X, y, attributes_values, classes = v
+        for amount_of_columns in amount_of_columns_per_ruleset:
+            for i in range(iters):
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=test_size)
+                model.train(
+                    X_train,
+                    y_train,
+                    attributes_values,
+                    B, M, T, m,
+                    rule_ranking_method,
+                    num_of_attributes=amount_of_columns)
+                y_pred = [model.predict(x) for x in X_test]
+                cm, acc, prec, f1 = quality_measures(y_test, y_pred, classes)
+                results[k][str(amount_of_columns)]["confusion_matrix"].append(cm.tolist())
+                results[k][str(amount_of_columns)]["accuracy"].append(acc)
+                results[k][str(amount_of_columns)]["precision"].append(prec)
+                results[k][str(amount_of_columns)]["f1_score"].append(f1)
+                print("DONE. Set: ", k, "Amount of columns: ", amount_of_columns, " Iteration: ", i)
+            # count average, std deviation, best, worst for each measure
+            stats = count_statistics(
+                results[k][str(amount_of_columns)]["confusion_matrix"],
+                results[k][str(amount_of_columns)]["accuracy"],
+                results[k][str(amount_of_columns)]["precision"],
+                results[k][str(amount_of_columns)]["f1_score"]
+            )
+            results[k][str(amount_of_columns)]["statistics"] = stats
+
+    # Należy pracować na zagregowanych wynikach z min. 25 uruchomień.
+    # Dla takich algorytmów podaje się średnią, odchylenia standardowe, najlepszy i najgorszy wynik. Należy o tym napisać już w dokumentacji wstępnej.
+
+    dump_exp_results("[RandomForest]_amount_of_columns.json", results)
+
+
 training_test_sizes_per_ruleset = [20, 50, 100, 200, 500]
 
 
@@ -411,9 +471,11 @@ def compare_models():
 
     # exp_hyperparam_max_rules_per_ruleset_number(iters, sets, B, M, m, def_ran_method, test_size)
 
-    classic_forest_results = random_forest_exp(25, 100, 30, 0.2)
+    exp_hyperparam_amount_of_columns_per_ruleset(iters, sets, B, M, T, m, def_ran_method, test_size)
 
-    single_ruleset_results = single_ruleset_exp(25, 30, 5, RuleRankingMethodsEnum.COVERAGE, 0.9)
+    # classic_forest_results = random_forest_exp(25, 100, 30, 0.2)
+
+    # single_ruleset_results = single_ruleset_exp(25, 30, 5, RuleRankingMethodsEnum.COVERAGE, 0.9)
 
     pass
 
