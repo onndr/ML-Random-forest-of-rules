@@ -346,7 +346,7 @@ def single_ruleset_exp(iters, T, m, rule_ranking_method, test_size):
                 results[k][max_ruleset]["precision"],
                 results[k][max_ruleset]["f1_score"]
             )
-            results[k]["statistics"] = stats
+            results[k][max_ruleset]["statistics"] = stats
 
     dump_exp_results("[Ruleset]_single_ruleset.json", results)
     return results
@@ -393,7 +393,7 @@ def random_forest_exp(iters, n_estimators, max_depth, test_size):
                 results[k][max_features]["precision"],
                 results[k][max_features]["f1_score"]
             )
-            results[k]["statistics"] = stats
+            results[k][max_features]["statistics"] = stats
 
     dump_exp_results("[DefaultRandomForest]_random_forest.json", results)
     return results
