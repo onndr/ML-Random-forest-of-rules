@@ -22,7 +22,7 @@ from constants import RULE_RANKING_METHODS, RuleRankingMethodsEnum, DefaultHyper
 #   Maksymalna ilość reguł w zbiorze reguł, np. 2, 10, 250
 #
 # Miary jakości
-#   Tablica pomyłek (confusion matrix)
+#   Macierz pomyłek
 #   Dokładność
 #   Precyzja
 #   F1-score
@@ -460,7 +460,8 @@ def random_forest_exp(iters, n_estimators, max_depth, test_size):
 
 
 def compare_models():
-    # i guess we first find the best params for our model and then compare
+    # choose which experiments to run
+
     # exp_var_rule_ranking(iters, sets, B, M, T, m, test_size)
 
     # exp_hyperparam_training_set_size_whole_algorithm(iters, sets, B, M, T, m, def_ran_method)
@@ -486,8 +487,3 @@ def print_out_results():
             results = read_stats("../wyniki_eksperymentów/" + file)
             print_stats_tables(results)
 
-
-if __name__ == "__main__":
-    compare_models()
-    print_out_results()
-    pass
